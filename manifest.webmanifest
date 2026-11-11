@@ -1,0 +1,16 @@
+{
+  "name": "Snake",
+  "short_name": "Snake",
+  "description": "Snake-Spiel fürs Tablet",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "background_color": "#0b2417",
+  "theme_color": "#0b2417",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
