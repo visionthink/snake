@@ -112,6 +112,15 @@
   #skins [data-skin="gruen"] { background: linear-gradient(90deg, #4ccf58, #2ea13a); }
   #skins [data-skin="feuer"] { background: linear-gradient(90deg, #ffd43b, #ff8a1f, #e5261f); }
   #skins [data-skin="regenbogen"] { background: linear-gradient(90deg, #ff4d4d, #ffb03b, #f4f43b, #4cd964, #38b6ff, #a05cff); }
+  #skins [data-skin="nokia"] {
+    background: #c7f0d8; color: #43523d;
+    font-family: "Courier New", monospace; font-size: 14px; font-weight: 900; letter-spacing: 1px;
+  }
+  body.nokia canvas {
+    border-radius: 6px;
+    box-shadow: 0 0 0 7px #2b2f36, 0 0 0 11px #14161a, 0 14px 36px rgba(0,0,0,.55);
+  }
+  body.nokia #overlay { border-radius: 6px; }
   #startBtn {
     width: 100%; padding: 15px; font-size: 24px; font-weight: 800;
     background: linear-gradient(#ffe066, #ffc21a); color: #3a2a00;
@@ -164,6 +173,7 @@
           <button data-skin="gruen" aria-label="Grüne Schlange"></button>
           <button data-skin="feuer" aria-label="Feuerschlange"></button>
           <button data-skin="regenbogen" aria-label="Regenbogenschlange"></button>
+          <button data-skin="nokia" aria-label="Retro-Handy-Design">RETRO</button>
         </div>
         <button id="startBtn">Los geht's!</button>
         <div class="opt">
@@ -517,8 +527,56 @@
     ctx.globalAlpha = 1;
   }
 
+  // Retro-Design wie auf alten Handys: einfarbiges Display, grobe Pixel, ruckelnde Bewegung
+  function drawNokia(now) {
+    const BG = '#c7f0d8', FG = '#43523d';
+    const u = cell / 4, gap = Math.max(1, u * 0.1);
+    ctx.fillStyle = BG;
+    ctx.fillRect(0, 0, boardPx, boardPx);
+    ctx.fillStyle = FG;
+    const px = (c, gx, gy) => ctx.fillRect(c.x * cell + gx * u + gap / 2, c.y * cell + gy * u + gap / 2, u - gap, u - gap);
+    if (!wrapEl.checked) { // Rand = Wand
+      const w = Math.max(2, u * 0.4);
+      ctx.fillRect(0, 0, boardPx, w); ctx.fillRect(0, boardPx - w, boardPx, w);
+      ctx.fillRect(0, 0, w, boardPx); ctx.fillRect(boardPx - w, 0, w, boardPx);
+    }
+    if (food) {
+      for (const [gx, gy] of [[1, 0], [2, 0], [0, 1], [3, 1], [0, 2], [3, 2], [1, 3], [2, 3]]) px(food, gx, gy);
+    }
+    const blinkOff = state === 'over' && now - deadAt < 900 && Math.floor((now - deadAt) / 150) % 2 === 0;
+    if (blinkOff) return;
+    const toward = (a, b) => { // Richtung von a zum Nachbarn b, auch durch die Wand
+      let dx = b.x - a.x, dy = b.y - a.y;
+      if (Math.abs(dx) > 1) dx = -Math.sign(dx);
+      if (Math.abs(dy) > 1) dy = -Math.sign(dy);
+      return [dx, dy];
+    };
+    for (let i = 0; i < snake.length; i++) {
+      const s = snake[i];
+      if (i === 0) {
+        for (let gy = 0; gy < 4; gy++) for (let gx = 0; gx < 4; gx++) px(s, gx, gy);
+        ctx.fillStyle = BG; // Auge
+        px(s, dir.x > 0 ? 2 : 1, dir.y > 0 ? 2 : 1);
+        ctx.fillStyle = FG;
+        continue;
+      }
+      px(s, 1, 1); px(s, 2, 1); px(s, 1, 2); px(s, 2, 2);
+      for (const n of [snake[i - 1], snake[i + 1]]) {
+        if (!n) continue;
+        const [dx, dy] = toward(s, n);
+        if (dx) { const gx = dx > 0 ? 3 : 0; px(s, gx, 1); px(s, gx, 2); }
+        if (dy) { const gy = dy > 0 ? 3 : 0; px(s, 1, gy); px(s, 2, gy); }
+      }
+    }
+  }
+
   function draw(now, dt) {
     if (!bg) return;
+    if (skin === 'nokia') {
+      particles.length = 0; floats.length = 0; shake = 0;
+      if (snake) drawNokia(now);
+      return;
+    }
     ctx.save();
     if (shake > 0) {
       const a = cell * 0.25 * (shake / 420);
@@ -597,17 +655,20 @@
       }
     });
   });
+  const applySkin = () => document.body.classList.toggle('nokia', skin === 'nokia');
   document.querySelectorAll('#skins button').forEach(btn => {
     btn.addEventListener('click', () => {
       skin = btn.dataset.skin;
       pick('skins', 'skin', skin);
       store('snake-skin', skin);
+      applySkin();
     });
   });
   const savedMs = parseInt(store('snake-speed') || '', 10);
   if (savedMs && pick('levels', 'ms', savedMs)) baseMs = savedMs; else pick('levels', 'ms', baseMs);
   const savedSkin = store('snake-skin');
   if (savedSkin && pick('skins', 'skin', savedSkin)) skin = savedSkin; else pick('skins', 'skin', skin);
+  applySkin();
 
   // Pfeiltasten auf dem Bildschirm
   document.querySelectorAll('#pad button').forEach(btn => {
